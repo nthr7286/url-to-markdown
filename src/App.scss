@@ -13,3 +13,11 @@ body {
 .user-select-none {
   user-select: none;
 }
+
+body {
+  overflow-y: scroll;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

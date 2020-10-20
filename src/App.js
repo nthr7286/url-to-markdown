@@ -5,6 +5,7 @@ import React, {
   useRef
 } from 'react'
 import marked from 'marked'
+import axios from 'axios'
 
 import CssBaseLine from '@material-ui/core/CssBaseline'
 import {
@@ -35,7 +36,12 @@ import FileCopyIcon from '@material-ui/icons/FileCopy'
 
 import Typography from '@material-ui/core/Typography'
 
+import LinearProgress from '@material-ui/core/LinearProgress'
+
 import './App.scss'
+
+import { db, Timestamp } from './util/firebase'
+import { AirlineSeatLegroomReducedOutlined } from '@material-ui/icons';
 
 const theme = createMuiTheme({
   typography: {
@@ -54,28 +60,129 @@ const theme = createMuiTheme({
   },
 })
 
-const og = {
-  title: '日本ーベトナム首脳会談 菅首相 中国を念頭に緊密連携呼びかけ | NHKニュース',
-  description: '【NHK】ベトナムを訪れている菅総理大臣は、フック首相との首脳会談に臨み南シナ海への進出を強める中国を念頭に、自由で開かれたインド…',
-  site_name: 'NHKニュース',
-  url: 'https://www3.nhk.or.jp/news/html/20201019/k10012670281000.html',
+const urlsRef = db.collection('urls')
+
+export const addUrl = ({ url, setDocId }) => {
+  urlsRef
+  .add({
+    url,
+    createdAt: new Date().toISOString(),
+   })
+  .then(doc => {
+    setDocId(doc.id)
+    return console.log("url successfully added!", doc.id)
+  })
+  .catch(err => console.error(err))
 }
+
+// const textsRef = db.collection('texts')
+// const useText =  ({ url }) => {
+//   const initialState = {
+//     id: '',
+//     createdAt: '',
+//     url: '',
+//     text: '',
+//   }
+//   const [text, setText] = useState(initialState)
+//   useEffect(() => {
+//     console.log("useText")
+//     if (docId) {
+//       const unsubscribe = textsRef.doc(docId)
+//       .onSnapshot(doc => {
+//         if (doc.exists) {
+//           setText({ id: doc.id, ...doc.data() })
+//           return console.log("Text data successfully loaded", docId)
+//         } else {
+//           return console.error("Text not exists.")
+//         }
+//      })
+//      return () => unsubscribe()
+//     }
+//   }, [docId])
+//   return text
+// }
 
 export default function App() {
   const [url, setUrl] = useState('')
   const [markedContent, setMarkedContent] = useState('')
+  const [ogp, setOgp] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [text, setText] = useState('')
+  const textsRef = db.collection('texts')
+  const [docId, setDocId] = useState('')
+  useEffect(() => {
+    console.log("useText")
+    if (docId) {
+      const unsubscribe = textsRef.doc(docId)
+      .onSnapshot(doc => {
+        if (doc.exists) {
+          setText(doc.data().text)
+          return console.log("Text data successfully loaded", docId)
+        } else {
+          return console.error("Text not exists.")
+        }
+     })
+     return () => unsubscribe()
+    }
+  }, [docId])
+  useEffect(() => {
+    if (text) {
+      try {
+        const el = new DOMParser().parseFromString(text, "text/html")
+        const headEls = (el.head.children)
+        let obj = {}
+        Array.from(headEls).forEach(v => {
+            const key = v.getAttribute('property')?.split('og:')[1]
+            if (!key) return;
+            const value = v.getAttribute("content")
+            obj[key] = value
+        })
+        setOgp(obj)
+        setLoading(false)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }, [text])
+  const handleClear = () => {
+    setUrl('')
+    setMarkedContent('')
+    setOgp('')
+  }
   const handleSubmit = e => {
-    alert('submit' + url);
     e.preventDefault();
+    if (!url) return console.error('URL must not be empty!')
+    setLoading(true)
+    addUrl({ url, setDocId })
+      // axios.get("/text", { params: { url } })
+      // .then(res => res.data.text)
+      // .then(text => {
+      //   const el = new DOMParser().parseFromString(text, "text/html")
+      //   const headEls = (el.head.children)
+      //   let obj = {}
+      //   Array.from(headEls).forEach(v => {
+      //       const key = v.getAttribute('property')?.split('og:')[1]
+      //       if (!key) return;
+      //       const value = v.getAttribute("content")
+      //       obj[key] = value
+      //   })
+      //   setOgp(obj)
+      //   setLoading(false)
+      // })
+      // .catch(err => {
+      //   console.error(err)
+      // })
   }
   const handleChange = e => {
     e.preventDefault()
     setUrl(e.target.value)
   }
   useEffect(() => {
-    const { title, description, site_name, url } = og
-    setMarkedContent(`##### ${title}\n\n --- \n\n ###### ${description}\n\n ソース元：[${site_name}](${url})`)
-  }, [og])
+    const { title, description, site_name } = ogp
+    if (Object.entries(ogp).length) {
+      setMarkedContent(`##### ${title}\n\n --- \n\n ###### ${description}\n\n ソース元：[${site_name ? site_name : '外部リンク'}](${url})`)
+    }
+  }, [ogp, url])
 
   const inputRef = useRef();
   const copyToClipboard = () => {
@@ -95,6 +202,7 @@ export default function App() {
       document.execCommand("copy");
     }
   }
+
   return (
     <Fragment>
       <CssBaseLine />
@@ -102,88 +210,110 @@ export default function App() {
         <AppBar
           position="static"
           style={{ boxShadow: 'none'}}
-          className="mb-4 bg-transparent"
+          // className="mb-2 bg-transparent"
+          className="mb-2 bg-transparent"
         >
           <Toolbar>
             <Typography variant="h6" style={{ userSelect: 'none' }}>
-              URL to MarkDown
+              URL to Markdown
             </Typography>
           </Toolbar>
         </AppBar>
         <Grid container justify="center">
           <Grid item sm={10} md={9}>
-            <Paper
-              component="form"
-              className="d-flex align-items-center py-2 px-3 mb-4"
-              onSubmit={ handleSubmit }>
-                <InputBase
-                  className="ml-2"
-                  style={{ flex: 1 }}
-                  placeholder="Please Input a valid URL... and Click TRANSLATE Button"
-                  value={ url }
-                  onChange={ handleChange }
-                  inputProps={{ 'aria-label': 'input URL' }}
-                  autoFocus
-                />
-                <IconButton size="small">
-                  <ClearIcon />
-                </IconButton>
-                <Divider
-                  className="m-1"
-                  style={{ height: '28px' }}
-                  orientation="vertical"
-                />
-                <Button
-                  type="submit"
-                  color="primary"
-                  startIcon={<ForwardIcon />}
-                  children="translate"
-                />
-            </Paper>
-            <Card className="mb-4">
-              <CardHeader
-                title="Generated Code"
-                titleTypographyProps={{ 'style': { userSelect: 'none' } }}
-                action={<div>
-                    <IconButton
-                      color="primary"
-                      onClick={ copyToClipboard }
-                      children={ <FileCopyIcon /> }
+            <div className="mx-2">
+              <Paper
+                component="form"
+                onSubmit={ handleSubmit }
+                className="mb-2"
+              >
+                <div
+                  className="d-flex align-items-center py-2 px-3"
+                >
+                  <InputBase
+                    className="ml-2"
+                    style={{ flex: 1 }}
+                    placeholder="Please Input a valid URL... and Click MARKDOWN Button"
+                    value={ url }
+                    onChange={ handleChange }
+                    inputProps={{ 'aria-label': 'input URL' }}
+                    autoFocus
+                  />
+                  <IconButton size="small" onClick={ handleClear }>
+                    <ClearIcon />
+                  </IconButton>
+                  <Divider
+                    className="m-1"
+                    style={{ height: '28px' }}
+                    orientation="vertical"
+                  />
+                  <Button
+                    type="submit"
+                    color="primary"
+                    startIcon={<ForwardIcon />}
+                    children="markdown"
+                  />
+                </div>
+                { loading 
+                  ? <LinearProgress 
+                      stye={{
+                        width: '100%',
+                      }}
                     />
-                    <input 
-                      className="d-none"
-                      ref={ inputRef }
-                      value={ markedContent }
-                    />
-                </div>}
-              />
-              <CardContent>
-                <Typography
-                  className="text-wrap text-break"
-                  style={{ userSelect: 'none'}}
-                  children={ markedContent }
-                />
-              </CardContent>
-              <CardActions>
-                <Button 
-                  color="primary"
-                  onClick={ copyToClipboard }
-                  startIcon={<FileCopyIcon />}
-                  aria-label="copy to clipboard"
-                  children="copy to clipboard"
-                />
-              </CardActions>
-            </Card>
-            <Card className="mb-4">
-              <CardHeader
-                title="Preview"
-                titleTypographyProps={{ 'style': { userSelect: 'none' } }}
-              />
-              <CardContent
-                style={{ userSelect: 'none' }}
-                dangerouslySetInnerHTML={{ __html: marked(markedContent) }} 
-              />
-            </Card>
+                  : <div style={{ height: '4px' }} />
+                }
+              </Paper>
+              { Object.entries(ogp).length
+                ? <Fragment>
+                    <Card className="mb-2">
+                      <CardHeader
+                        title="Marked Text"
+                        titleTypographyProps={{ 'style': { userSelect: 'none' } }}
+                        action={<div>
+                            <IconButton
+                              color="primary"
+                              onClick={ copyToClipboard }
+                              children={ <FileCopyIcon /> }
+                            />
+                            <input 
+                              className="d-none"
+                              ref={ inputRef }
+                              value={ markedContent }
+                              readOnly
+                            />
+                        </div>}
+                      />
+                      <CardContent>
+                        <Typography
+                          className="text-wrap text-break"
+                          style={{ userSelect: 'none'}}
+                          children={ markedContent }
+                        />
+                      </CardContent>
+                      <CardActions>
+                        <Button 
+                          color="primary"
+                          onClick={ copyToClipboard }
+                          startIcon={<FileCopyIcon />}
+                          aria-label="copy to clipboard"
+                          children="copy to clipboard"
+                        />
+                      </CardActions>
+                    </Card>
+                    <Card className="mb-2">
+                      <CardHeader
+                        title="Preview"
+                        titleTypographyProps={{ 'style': { userSelect: 'none' } }}
+                      />
+                      <CardContent
+                        style={{ userSelect: 'none' }}
+                        dangerouslySetInnerHTML={{ __html: marked(markedContent) }} 
+                      />
+                    </Card>
+                </Fragment>
+                : null
+              }
+            </div>
           </Grid>
         </Grid>
     </ThemeProvider>
