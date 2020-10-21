@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useRef
 } from 'react'
+import os from 'os'
 import marked from 'marked'
 
 import CssBaseLine from '@material-ui/core/CssBaseline'
@@ -135,7 +136,8 @@ export default function App() {
   useEffect(() => {
     const { title, description, site_name } = ogp
     if (Object.entries(ogp).length) {
-      setMarkedContent(`##### ${title} \r\n\r\n--- \r\n\r\n###### ${description} \r\n\r\nソース元：[${site_name ? site_name : '外部リンク'}](${url})`)
+      const eol = os.EOL + os.EOL
+      setMarkedContent(`##### ${title + eol}---${eol}###### ${description + eol}ソース元：[${site_name ? site_name : '外部リンク'}](${url})`)
     }
   }, [ogp, url])
 
