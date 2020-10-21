@@ -5,7 +5,6 @@ import React, {
   useRef
 } from 'react'
 import marked from 'marked'
-import axios from 'axios'
 
 import CssBaseLine from '@material-ui/core/CssBaseline'
 import {
@@ -25,6 +24,7 @@ import CardActions from '@material-ui/core/CardActions'
 
 import Paper from '@material-ui/core/Paper'
 import InputBase from '@material-ui/core/InputBase'
+import TextField from '@material-ui/core/TextField'
 
 import Divider from '@material-ui/core/Divider'
 
@@ -40,8 +40,7 @@ import LinearProgress from '@material-ui/core/LinearProgress'
 
 import './App.scss'
 
-import { db, Timestamp } from './util/firebase'
-import { AirlineSeatLegroomReducedOutlined } from '@material-ui/icons';
+import { db } from './util/firebase'
 
 const theme = createMuiTheme({
   typography: {
@@ -70,37 +69,10 @@ export const addUrl = ({ url, setDocId }) => {
    })
   .then(doc => {
     setDocId(doc.id)
-    return console.log("url successfully added!", doc.id)
+    return console.log("The URL successfully added!", doc.id)
   })
   .catch(err => console.error(err))
 }
-
-// const textsRef = db.collection('texts')
-// const useText =  ({ url }) => {
-//   const initialState = {
-//     id: '',
-//     createdAt: '',
-//     url: '',
-//     text: '',
-//   }
-//   const [text, setText] = useState(initialState)
-//   useEffect(() => {
-//     console.log("useText")
-//     if (docId) {
-//       const unsubscribe = textsRef.doc(docId)
-//       .onSnapshot(doc => {
-//         if (doc.exists) {
-//           setText({ id: doc.id, ...doc.data() })
-//           return console.log("Text data successfully loaded", docId)
-//         } else {
-//           return console.error("Text not exists.")
-//         }
-//      })
-//      return () => unsubscribe()
-//     }
-//   }, [docId])
-//   return text
-// }
 
 export default function App() {
   const [url, setUrl] = useState('')
@@ -111,20 +83,20 @@ export default function App() {
   const textsRef = db.collection('texts')
   const [docId, setDocId] = useState('')
   useEffect(() => {
-    console.log("useText")
     if (docId) {
       const unsubscribe = textsRef.doc(docId)
       .onSnapshot(doc => {
         if (doc.exists) {
           setText(doc.data().text)
-          return console.log("Text data successfully loaded", docId)
+          return console.log("The text data successfully loaded.", docId)
         } else {
-          return console.error("Text not exists.")
+          return console.error("Text NOT exists!")
         }
      })
      return () => unsubscribe()
     }
-  }, [docId])
+  }, [docId, textsRef])
+
   useEffect(() => {
     if (text) {
       try {
@@ -144,6 +116,7 @@ export default function App() {
       }
     }
   }, [text])
+
   const handleClear = () => {
     setUrl('')
     setMarkedContent('')
@@ -151,27 +124,9 @@ export default function App() {
   }
   const handleSubmit = e => {
     e.preventDefault();
-    if (!url) return console.error('URL must not be empty!')
+    if (!url) return console.error('URL must NOT be empty!')
     setLoading(true)
     addUrl({ url, setDocId })
-      // axios.get("/text", { params: { url } })
-      // .then(res => res.data.text)
-      // .then(text => {
-      //   const el = new DOMParser().parseFromString(text, "text/html")
-      //   const headEls = (el.head.children)
-      //   let obj = {}
-      //   Array.from(headEls).forEach(v => {
-      //       const key = v.getAttribute('property')?.split('og:')[1]
-      //       if (!key) return;
-      //       const value = v.getAttribute("content")
-      //       obj[key] = value
-      //   })
-      //   setOgp(obj)
-      //   setLoading(false)
-      // })
-      // .catch(err => {
-      //   console.error(err)
-      // })
   }
   const handleChange = e => {
     e.preventDefault()
@@ -180,27 +135,20 @@ export default function App() {
   useEffect(() => {
     const { title, description, site_name } = ogp
     if (Object.entries(ogp).length) {
-      setMarkedContent(`##### ${title}\n\n --- \n\n ###### ${description}\n\n ソース元：[${site_name ? site_name : '外部リンク'}](${url})`)
+      setMarkedContent(`##### ${title} \r\n\r\n--- \r\n\r\n###### ${description} \r\n\r\nソース元：[${site_name ? site_name : '外部リンク'}](${url})`)
     }
   }, [ogp, url])
 
   const inputRef = useRef();
   const copyToClipboard = () => {
-    const copyText = inputRef.current.value;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(copyText).then(
-        () => {
-          console.log("copy success", copyText);
-        },
-        error => {
-          console.log(error);
-        }
-      );
-    } else {
-      inputRef.current.select();
-      console.log(document.execCommand("copy")); //true
-      document.execCommand("copy");
-    }
+      inputRef.current.select()
+      if (document.execCommand("copy")) {
+        document.execCommand("copy")
+        console.log('Marked text is succesfully copied')
+      } else {
+        console.error('The browser is NOT supported! Please use Chrome!')
+      }
+      inputRef.current.blur()
   }
 
   return (
@@ -210,7 +158,6 @@ export default function App() {
         <AppBar
           position="static"
           style={{ boxShadow: 'none'}}
-          // className="mb-2 bg-transparent"
           className="mb-2 bg-transparent"
         >
           <Toolbar>
@@ -269,25 +216,23 @@ export default function App() {
                       <CardHeader
                         title="Marked Text"
                         titleTypographyProps={{ 'style': { userSelect: 'none' } }}
-                        action={<div>
-                            <IconButton
-                              color="primary"
-                              onClick={ copyToClipboard }
-                              children={ <FileCopyIcon /> }
-                            />
-                            <input 
-                              className="d-none"
-                              ref={ inputRef }
-                              value={ markedContent }
-                              readOnly
-                            />
-                        </div>}
+                        action={
+                          <IconButton
+                            color="primary"
+                            onClick={ copyToClipboard }
+                            children={ <FileCopyIcon /> }
+                          />
+                        }
                       />
                       <CardContent>
-                        <Typography
-                          className="text-wrap text-break"
-                          style={{ userSelect: 'none'}}
-                          children={ markedContent }
+                        <TextField 
+                          value={ markedContent }
+                          inputProps={{ 'ref':  inputRef }}
+                          variant="outlined"
+                          multiline
+                          rows={10}
+                          readOnly 
+                          fullWidth
                         />
                       </CardContent>
                       <CardActions>

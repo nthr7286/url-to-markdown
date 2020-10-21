@@ -6,10 +6,8 @@ import 'firebase/firestore'
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore()
-const Timestamp = firebase.firestore.Timestamp
 
 export {
   firebase as default,
   db,
-  Timestamp,
 }
