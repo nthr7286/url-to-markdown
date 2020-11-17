@@ -70,7 +70,7 @@ export const addUrl = ({ url, setDocId }) => {
    })
   .then(doc => {
     setDocId(doc.id)
-    return console.log("The URL successfully added!", doc.id)
+    return console.log("url added!", doc.id)
   })
   .catch(err => console.error(err))
 }
@@ -80,43 +80,24 @@ export default function App() {
   const [markedContent, setMarkedContent] = useState('')
   const [ogp, setOgp] = useState({})
   const [loading, setLoading] = useState(false)
-  const [text, setText] = useState('')
-  const textsRef = db.collection('texts')
   const [docId, setDocId] = useState('')
   useEffect(() => {
     if (docId) {
-      const unsubscribe = textsRef.doc(docId)
-      .onSnapshot(doc => {
-        if (doc.exists) {
-          setText(doc.data().text)
-          return console.log("The text data successfully loaded.", docId)
-        } else {
-          return console.error("Text NOT exists!")
-        }
-     })
+      const unsubscribe = urlsRef.doc(docId)
+        .onSnapshot(doc => {
+          if (doc.exists) {
+            const data = doc.data()
+            if (Object.entries(data).length > 2) {
+              setOgp({ id: doc.id, ...data })
+              return console.log("ogp loaded!", ogp)
+            }
+          } else {
+            return console.error("ogp doesnot exists!")
+          }
+        })
      return () => unsubscribe()
     }
-  }, [docId, textsRef])
-
-  useEffect(() => {
-    if (text) {
-      try {
-        const el = new DOMParser().parseFromString(text, "text/html")
-        const headEls = (el.head.children)
-        let obj = {}
-        Array.from(headEls).forEach(v => {
-            const key = v.getAttribute('property')?.split('og:')[1]
-            if (!key) return;
-            const value = v.getAttribute("content")
-            obj[key] = value
-        })
-        setOgp(obj)
-        setLoading(false)
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }, [text])
+  }, [docId])
 
   const handleClear = () => {
     setUrl('')
@@ -138,6 +119,7 @@ export default function App() {
     if (Object.entries(ogp).length) {
       const eol = os.EOL + os.EOL
       setMarkedContent(`##### ${title + eol}---${eol}###### ${description + eol}ソース元：[${site_name ? site_name : '外部リンク'}](${url})`)
+      setLoading(false)
     }
   }, [ogp, url])
 
