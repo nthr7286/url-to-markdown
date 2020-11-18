@@ -10,8 +10,10 @@ import {
 
 import './App.scss'
 
+import ContextProvider from './context'
 import Header from './components/Header'
 import UrlToMarkdown from './components/UrlToMarkdown'
+import Snackbar from './components/Snackbar'
 
 const theme = createMuiTheme({
   typography: {
@@ -30,13 +32,17 @@ const theme = createMuiTheme({
   },
 })
 
+
 export default function App() {
-  return (
+ return (
     <Fragment>
       <CssBaseLine />
       <ThemeProvider theme={ theme }>
+      <ContextProvider>
         <Header />
         <UrlToMarkdown />
+        <Snackbar />
+      </ContextProvider>
     </ThemeProvider>
     </Fragment>
   )
