@@ -45,3 +45,26 @@ export const onSnapshotUrl = ({ docId, setOgp, dispatch, setLoading }) => {
       } 
     })
 }
+
+export const getUrls = ({ setUrls }) => {
+  console.log('getUrls')
+  return urlsRef
+    .orderBy('createdAt', 'desc')
+    .limit(6)
+    .get()
+    .then(async snapshot => {
+      let urls = []
+      await snapshot.forEach(doc => {
+        urls.push({
+          id: doc.id,
+          ...doc.data(),
+        })
+      })
+      return urls
+    })
+    .then(urls => {
+      setUrls(urls)
+      return console.log('urls set!')
+    })
+    .catch(err => console.error(err))
+}

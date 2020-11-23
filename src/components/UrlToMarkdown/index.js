@@ -8,6 +8,7 @@ import Grid from '@material-ui/core/Grid'
 import InputUrl from './InputUrl'
 import MarkedText from './MarkedText'
 import Preview from './Preview'
+import RecentPosts from './RecentPosts'
 import useOgp from '../../hooks/useOgp'
 
 export default function UrlToMarkdown () {
@@ -32,7 +33,7 @@ export default function UrlToMarkdown () {
                 <MarkedText markedContent={ markedContent } />
                 <Preview markedContent={ markedContent } />
             </Fragment>
-            : null
+            : <RecentPosts />
           }
         </div>
       </Grid>
